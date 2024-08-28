@@ -1,0 +1,46 @@
+# Node modules
+node_modules/
+
+
+# Environment variables
+.env
+
+# Build output
+/dist
+/build
+
+# Temporary files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Coverage reports
+/coverage
+
+# Miscellaneous
+*.swp
+*.swo
+*.swn
+*.tmp
+*.bak
+*.orig
+*.log
+
+# Test and Debug files
+*.test.js
+*.spec.js
+*.debug.js
+
+# Packages
+package-lock.json
+yarn.lock
