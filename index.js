@@ -48,48 +48,66 @@ function verifyRazorpayWebhook(rawBody, signature) {
   }
 }
 
-// Save payment details to Firestore
 async function savePaymentDetails(paymentData) {
-  const paymentEntity = paymentData.payload.payment.entity;
-  const paymentId = paymentEntity.id;
-
   try {
+    // First validate that we have the required data
+    if (!paymentData?.payload?.payment?.entity?.id) {
+      console.error('Invalid payment data structure:', JSON.stringify(paymentData));
+      throw new Error('Invalid payment data: missing payment ID');
+    }
+
+    const paymentEntity = paymentData.payload.payment.entity;
+    const paymentId = paymentEntity.id;
+
+    // Validate paymentId
+    if (!paymentId || typeof paymentId !== 'string') {
+      console.error('Invalid paymentId:', paymentId);
+      throw new Error('Invalid payment ID');
+    }
+
+    console.log('Processing payment:', {
+      paymentId,
+      orderId: paymentEntity.order_id,
+      amount: paymentEntity.amount,
+      status: paymentEntity.status
+    });
+
     return await db.runTransaction(async (transaction) => {
-      // 1. First, perform ALL reads
-      const paymentRef = db.collection('payments').doc(paymentId);
+      // 1. Validate and perform reads
+      const paymentRef = db.collection('payments').doc(paymentId.toString());
       const paymentDoc = await transaction.get(paymentRef);
       
       let orderDoc;
       let userDoc;
       
-      // Read order document if payment is captured
       if (paymentEntity.status === 'captured') {
-        const orderRef = db.collection('orders').doc(paymentEntity.order_id);
-        orderDoc = await transaction.get(orderRef);
+        if (paymentEntity.order_id) {
+          const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
+          orderDoc = await transaction.get(orderRef);
+        }
         
-        // Read user document if userId exists in notes
-        if (paymentEntity.notes && paymentEntity.notes.userId) {
-          const userRef = db.collection('users').doc(paymentEntity.notes.userId);
+        if (paymentEntity.notes?.userId) {
+          const userRef = db.collection('users').doc(paymentEntity.notes.userId.toString());
           userDoc = await transaction.get(userRef);
         }
       }
 
-      // 2. Check conditions
+      // 2. Check for existing payment
       if (paymentDoc.exists) {
         console.log('Payment already processed:', paymentId);
         return true;
       }
 
-      // 3. Now perform ALL writes
+      // 3. Prepare payment data
       const payment = {
         paymentId: paymentId,
-        orderId: paymentEntity.order_id,
+        orderId: paymentEntity.order_id || null,
         amount: paymentEntity.amount / 100,
-        currency: paymentEntity.currency,
+        currency: paymentEntity.currency || 'INR',
         status: paymentEntity.status,
         method: paymentEntity.method,
-        email: paymentEntity.email,
-        contact: paymentEntity.contact,
+        email: paymentEntity.email || null,
+        contact: paymentEntity.contact || null,
         notes: paymentEntity.notes || {},
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         metadata: {
@@ -98,61 +116,69 @@ async function savePaymentDetails(paymentData) {
         }
       };
 
-      // Write payment document
-      transaction.set(paymentRef, payment);
+      // 4. Perform writes
+      try {
+        transaction.set(paymentRef, payment);
 
-      // Update order if payment is captured and order exists
-      if (paymentEntity.status === 'captured' && orderDoc && orderDoc.exists) {
-        const orderRef = db.collection('orders').doc(paymentEntity.order_id);
-        transaction.update(orderRef, {
-          paymentStatus: 'completed',
-          paymentId: paymentId,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        if (paymentEntity.status === 'captured') {
+          if (orderDoc && orderDoc.exists && paymentEntity.order_id) {
+            const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
+            transaction.update(orderRef, {
+              paymentStatus: 'completed',
+              paymentId: paymentId,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
+
+          if (userDoc && userDoc.exists && paymentEntity.notes?.userId) {
+            const userRef = db.collection('users').doc(paymentEntity.notes.userId.toString());
+            transaction.update(userRef, {
+              hasAccess: true,
+              accessGrantedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        }
+
+        return true;
+      } catch (writeError) {
+        console.error('Transaction write error:', writeError);
+        throw writeError;
       }
-
-      // Update user if userId exists and user document exists
-      if (paymentEntity.notes?.userId && userDoc && userDoc.exists) {
-        const userRef = db.collection('users').doc(paymentEntity.notes.userId);
-        transaction.update(userRef, {
-          hasAccess: true,
-          accessGrantedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-      }
-
-      return true;
     });
 
   } catch (error) {
-    console.error('Error saving payment details:', error);
+    console.error('Save payment details error:', error);
+    console.error('Payment data:', JSON.stringify(paymentData, null, 2));
     throw error;
   }
 }
 
-
-// Webhook endpoint
+// Updated webhook endpoint with better error handling
 app.post("/Payment", async (req, res) => {
   try {
+    console.log('Received webhook:', {
+      event: req.body.event,
+      headers: req.headers
+    });
+
     const signature = req.headers['x-razorpay-signature'];
     
     if (!signature) {
+      console.error('Missing Razorpay signature');
       return res.status(400).json({ error: 'Missing signature' });
     }
 
     // Verify signature using raw body
     const isValid = verifyRazorpayWebhook(req.rawBody, signature);
     if (!isValid) {
+      console.error('Invalid Razorpay signature');
       return res.status(400).json({ error: 'Invalid signature' });
     }
 
-    // Handle different payment events
     switch (req.body.event) {
       case 'payment.captured':
-        await savePaymentDetails(req.body);
-        break;
-      
       case 'payment.failed':
-        // Handle failed payments if needed
+        console.log(`Processing ${req.body.event} event`);
         await savePaymentDetails(req.body);
         break;
       
@@ -160,13 +186,15 @@ app.post("/Payment", async (req, res) => {
         console.log('Unhandled event type:', req.body.event);
     }
 
-    // Always return 200 quickly to acknowledge receipt
-    res.status(200).json({ status: 'success' });
+    return res.status(200).json({ status: 'success' });
 
   } catch (error) {
     console.error('Webhook processing error:', error);
-    // Still return 200 to prevent retries, but log the error
-    res.status(200).json({ status: 'error logged' });
+    // Still return 200 to prevent retries
+    return res.status(200).json({ 
+      status: 'error logged',
+      message: error.message 
+    });
   }
 });
 
