@@ -1,5 +1,5 @@
 const express = require("express");
-const body_parser = require("body-parser");
+const bodyParser = require("body-parser");
 const axios = require("axios");
 const crypto = require('node:crypto');
 require('dotenv').config();
@@ -18,70 +18,157 @@ const serviceAccount = {
   client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
   universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN
 };
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
+const app = express();
 
-const app = express().use(body_parser.json());
-
-const mytoken = process.env.MY_TOKEN_WEBHOOK;
-const razorpayWebhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+// Important: Use raw body parser for webhook signature verification
+app.use(bodyParser.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
 // Verify Razorpay webhook signature
-function verifyRazorpayWebhook(body, signature) {
-  const expectedSignature = crypto
-    .createHmac('sha256', razorpayWebhookSecret)
-    .digest('hex');
-  
-  return crypto.timingSafeEqual(
-    Buffer.from(expectedSignature),
-    Buffer.from(signature)
-  );
+function verifyRazorpayWebhook(rawBody, signature) {
+  try {
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
+      //.update(rawBody)
+      .digest('hex');
+    
+    return expectedSignature === signature;
+  } catch (error) {
+    console.error('Signature verification failed:', error);
+    return false;
+  }
 }
 
 // Save payment details to Firestore
 async function savePaymentDetails(paymentData) {
-  try {
-    const payment = {
-      paymentId: paymentData.payload.payment.entity.id,
-      orderId: paymentData.payload.payment.entity.order_id,
-      amount: paymentData.payload.payment.entity.amount / 100, // Convert from paise to rupees
-      currency: paymentData.payload.payment.entity.currency,
-      status: paymentData.payload.payment.entity.status,
-      method: paymentData.payload.payment.entity.method,
-      email: paymentData.payload.payment.entity.email,
-      contact: paymentData.payload.payment.entity.contact,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      razorpayPaymentData: paymentData.payload.payment.entity // Store complete payment data
-    };
+  const paymentEntity = paymentData.payload.payment.entity;
+  const paymentId = paymentEntity.id;
 
-    // Save to Firestore
-    await db.collection('payments').doc(payment.paymentId).set(payment);
-    
-    // If you want to update related documents (e.g., user's subscription status)
-    if (paymentData.payload.payment.entity.status === 'captured') {
-      // Update user's subscription or order status
-      const orderId = payment.orderId;
-      const orderRef = await db.collection('orders').doc(orderId).get();
+  try {
+    return await db.runTransaction(async (transaction) => {
+      // 1. First, perform ALL reads
+      const paymentRef = db.collection('payments').doc(paymentId);
+      const paymentDoc = await transaction.get(paymentRef);
       
-      if (orderRef.exists) {
-        await db.collection('orders').doc(orderId).update({
+      let orderDoc;
+      let userDoc;
+      
+      // Read order document if payment is captured
+      if (paymentEntity.status === 'captured') {
+        const orderRef = db.collection('orders').doc(paymentEntity.order_id);
+        orderDoc = await transaction.get(orderRef);
+        
+        // Read user document if userId exists in notes
+        if (paymentEntity.notes && paymentEntity.notes.userId) {
+          const userRef = db.collection('users').doc(paymentEntity.notes.userId);
+          userDoc = await transaction.get(userRef);
+        }
+      }
+
+      // 2. Check conditions
+      if (paymentDoc.exists) {
+        console.log('Payment already processed:', paymentId);
+        return true;
+      }
+
+      // 3. Now perform ALL writes
+      const payment = {
+        paymentId: paymentId,
+        orderId: paymentEntity.order_id,
+        amount: paymentEntity.amount / 100,
+        currency: paymentEntity.currency,
+        status: paymentEntity.status,
+        method: paymentEntity.method,
+        email: paymentEntity.email,
+        contact: paymentEntity.contact,
+        notes: paymentEntity.notes || {},
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        metadata: {
+          rawResponse: paymentEntity,
+          webhookEvent: paymentData.event
+        }
+      };
+
+      // Write payment document
+      transaction.set(paymentRef, payment);
+
+      // Update order if payment is captured and order exists
+      if (paymentEntity.status === 'captured' && orderDoc && orderDoc.exists) {
+        const orderRef = db.collection('orders').doc(paymentEntity.order_id);
+        transaction.update(orderRef, {
           paymentStatus: 'completed',
-          paymentId: payment.paymentId,
+          paymentId: paymentId,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
       }
-    }
 
-    console.log('Payment details saved successfully:', payment.paymentId);
-    return true;
+      // Update user if userId exists and user document exists
+      if (paymentEntity.notes?.userId && userDoc && userDoc.exists) {
+        const userRef = db.collection('users').doc(paymentEntity.notes.userId);
+        transaction.update(userRef, {
+          hasAccess: true,
+          accessGrantedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      return true;
+    });
+
   } catch (error) {
     console.error('Error saving payment details:', error);
-    return false;
+    throw error;
   }
 }
+
+
+// Webhook endpoint
+app.post("/razorpay-webhook", async (req, res) => {
+  try {
+    const signature = req.headers['x-razorpay-signature'];
+    
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing signature' });
+    }
+
+    // Verify signature using raw body
+    const isValid = verifyRazorpayWebhook(req.rawBody, signature);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
+    // Handle different payment events
+    switch (req.body.event) {
+      case 'payment.captured':
+        await savePaymentDetails(req.body);
+        break;
+      
+      case 'payment.failed':
+        // Handle failed payments if needed
+        await savePaymentDetails(req.body);
+        break;
+      
+      default:
+        console.log('Unhandled event type:', req.body.event);
+    }
+
+    // Always return 200 quickly to acknowledge receipt
+    res.status(200).json({ status: 'success' });
+
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    // Still return 200 to prevent retries, but log the error
+    res.status(200).json({ status: 'error logged' });
+  }
+});
 
 
 async function logToFirestore(logData) {
@@ -111,10 +198,7 @@ app.listen(port, () => {
 });
 
 app.all("/webhook", async (req, res) => {
-  // Log the entire request method and URL
-  //console.log(`Received ${req.method} request to ${req.originalUrl}`);
-  // Log the entire body request
-  //console.log(JSON.stringify(req.body, null, 2)); // Pretty print the body
+
 
   if (req.method === "GET") {
     let mode = req.query["hub.mode"];
@@ -201,14 +285,6 @@ app.all("/webhook", async (req, res) => {
       } else {
         console.log('No document found in WhatsAppLog');
       }
-
-      // const logData = {
-      //     phone_number_id: body_param.entry[0].changes[0].value.metadata.phone_number_id,
-      //     wa_id: messageData.from,
-      //     message_id: contextId,
-      //     timestamp: messageData.timestamp
-      // };
-      //await logToFirestore(logData);
     }
     res.sendStatus(200);
   } else {
@@ -216,52 +292,13 @@ app.all("/webhook", async (req, res) => {
   }
 });
 
-// Add new Razorpay webhook endpoint
-app.post("/razorpay-webhook", async (req, res) => {
-  try {
-    // Verify webhook signature
-    const signature = req.headers['x-razorpay-signature'];
-    
-    if (!signature) {
-      console.error('No Razorpay signature found');
-      return res.status(400).json({ error: 'No signature found' });
-    }
-
-    const isValid = verifyRazorpayWebhook(req.body, signature);
-    
-    if (!isValid) {
-      console.error('Invalid Razorpay signature');
-      return res.status(400).json({ error: 'Invalid signature' });
-    }
-
-    // Process the webhook payload
-    switch (req.body.event) {
-      case 'payment.captured':
-      case 'payment.failed':
-      case 'payment.authorized':
-        const saved = await savePaymentDetails(req.body);
-        if (!saved) {
-          return res.status(500).json({ error: 'Error saving payment details' });
-        }
-        break;
-      
-      default:
-        console.log('Unhandled event type:', req.body.event);
-    }
-
-    res.json({ status: 'success' });
-  } catch (error) {
-    console.error('Error processing Razorpay webhook:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 app.get("/", (req, res) => {
   res.status(200).send("Hello, this is webhook setup");
 });
 
 const signature = crypto
-  .createHmac('sha256', 'rzp_test_GVRGQ94Iqp6Jgx')
+  .createHmac('sha256', 'Shravan')
   .digest('hex');
 
 console.log(signature)
