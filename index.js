@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
 const crypto = require('node:crypto');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const admin = require('firebase-admin');
@@ -139,7 +140,20 @@ async function savePaymentDetails(paymentData) {
           }
         }
 
-        return true;
+        // After successful transaction, send invite email
+      if (paymentEntity.status === 'captured' && paymentEntity.email) {
+        try {
+          await sendInviteEmail(paymentEntity.email, {
+            amount: paymentEntity.amount / 100,
+            paymentId: paymentId
+          });
+        } catch (emailError) {
+          // Log email error but don't fail the transaction
+          console.error('Failed to send invite email:', emailError);
+        }
+      }
+
+      return true;
       } catch (writeError) {
         console.error('Transaction write error:', writeError);
         throw writeError;
@@ -330,3 +344,57 @@ const signature = crypto
   .digest('hex');
 
 console.log(signature)
+
+// Email configuration
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // or your preferred service
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD // Use an app-specific password
+  }
+});
+
+// Email sending function
+async function sendInviteEmail(email, paymentDetails) {
+  const emailTemplate = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Welcome to Hiking Workshop! Access Confirmed',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Welcome to the Hiking Workshop! 🏔️</h2>
+        
+        <p>Thank you for your payment. Your access has been confirmed!</p>
+        
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h3>Payment Details:</h3>
+          <p>Amount Paid: ₹${paymentDetails.amount}</p>
+          <p>Payment ID: ${paymentDetails.paymentId}</p>
+        </div>
+        
+        <div style="margin: 20px 0;">
+          <p>You can now access the workshop materials at:</p>
+          <a href="${process.env.WEBSITE_URL}/workshop" 
+             style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            Access Workshop
+          </a>
+        </div>
+        
+        <p>If you have any questions, please don't hesitate to reach out to us.</p>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+          <p style="color: #666;">Best regards,<br>The Workshop Team</p>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(emailTemplate);
+    console.log('Invite email sent successfully to:', email);
+    return true;
+  } catch (error) {
+    console.error('Error sending invite email:', error);
+    throw error;
+  }
+}
