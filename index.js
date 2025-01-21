@@ -38,7 +38,7 @@ function verifyRazorpayWebhook(rawBody, signature) {
   try {
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
-      //.update(rawBody)
+      .update(rawBody)
       .digest('hex');
     
     return expectedSignature === signature;
@@ -131,7 +131,7 @@ async function savePaymentDetails(paymentData) {
 
 
 // Webhook endpoint
-app.post("/razorpay-webhook", async (req, res) => {
+app.post("/Payment", async (req, res) => {
   try {
     const signature = req.headers['x-razorpay-signature'];
     
