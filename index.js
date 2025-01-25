@@ -385,49 +385,48 @@ const transporter = nodemailer.createTransport({
 
 // Email sending function
 async function sendInviteEmail(email, paymentDetails) {
-  const emailText = `
-  Get Ready to Hike! ⛰️
+  const emailText = `🏔️ Your Hiking Adventure Begins Now! 🌄
 
-  Your payment has been received. Let's get you started!
+Hello Adventurer,
 
-  --------------------------------------------------
-  
-  ${
-    true // Assume 'true' here since we are not checking if user exist, add logic here if user exists.
-      ? 'Existing User? Simply log in to your account.'
-      : 'New User? Sign up with the email you used to make the payment.'
+Exciting news! Your payment for the Hiking Workshop has been successfully processed. 
+
+✅ WORKSHOP ACCESS
+• Your account is now active
+• Log in or sign up at: https://manav.in
+• Note: Please use the email address you used for the payment to access the workshop.
+
+
+💰 PAYMENT DETAILS
+• Amount Paid: ₹${paymentDetails.amount}
+• Payment ID: ${paymentDetails.paymentId}
+
+🚀 NEXT STEPS
+1. Visit https://manav.in
+2. Log in with your registered email
+3. Explore your workshop details
+
+Reminder: If this is your first time, use the email you used for payment to create your account.
+
+Happy Hiking!
+Manav
+
+Questions? Contact us at support@manav.in
+`;
+
+  const emailTemplate = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: '🏞️ Your Hiking Workshop Access is Ready!',
+      text: emailText
+  };
+
+  try {
+      await transporter.sendMail(emailTemplate);
+      console.log('Invite email sent successfully to:', email);
+      return true;
+  } catch (error) {
+      console.error('Error sending invite email:', error);
+      throw error;
   }
-
-  
-  Access Your Account: https://app.manav.in
-
-  --------------------------------------------------
-  
-  Happy Hiking!
-  
-  Best regards,
-  The Workshop Team
-
-  --------------------------------------------------
-  Payment Details:
-  Amount Paid: ₹${paymentDetails.amount}
-  Payment ID: ${paymentDetails.paymentId}
-  `;
-
-
-const emailTemplate = {
-  from: process.env.EMAIL_USER,
-  to: email,
-  subject: 'Hiking Workshop Access: Ready to Go!',
-  text: emailText, //Use text instead of HTML, so that format is not changed.
-};
-
-try {
-  await transporter.sendMail(emailTemplate);
-  console.log('Invite email sent successfully to:', email);
-  return true;
-} catch (error) {
-  console.error('Error sending invite email:', error);
-  throw error;
-}
 }
