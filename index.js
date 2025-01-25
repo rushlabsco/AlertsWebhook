@@ -142,32 +142,45 @@ async function savePaymentDetails(paymentData) {
         }
 
         // After successful transaction, send invite email
-        if (paymentEntity.status === 'captured' && paymentEntity.email) {
-          // Check if user exists in UserTable
-          const userQuery = query(
-            collection(db, "UserTable"), 
-            where("email", "==", paymentEntity.email)
-          );
+      if (paymentEntity.status === 'captured' && paymentEntity.email) {
+        try {
           
-          const userSnapshot = await getDocs(userQuery);
-          
-          if (!userSnapshot.empty) {
-            // User exists, update workshopAccess
-            const userDoc = userSnapshot.docs[0];
-            await updateDoc(userDoc.ref, {
-              workshopAccess: true
-            });
-        
-            try {
-              await sendInviteEmail(paymentEntity.email, {
-                amount: paymentEntity.amount / 100,
-                paymentId: paymentId
-              });
-            } catch (emailError) {
-              console.error('Failed to send invite email:', emailError);
-            }
-          }
+          await sendInviteEmail(paymentEntity.email, {
+            amount: paymentEntity.amount / 100,
+            paymentId: paymentId
+          });
+        } catch (emailError) {
+          // Log email error but don't fail the transaction
+          console.error('Failed to send invite email:', emailError);
         }
+      }
+
+      // if (paymentEntity.status === 'captured' && paymentEntity.email) {
+      //   // Check if user exists in UserTable
+      //   const userQuery = query(
+      //     collection(db, "UserTable"), 
+      //     where("email", "==", paymentEntity.email)
+      //   );
+        
+      //   const userSnapshot = await getDocs(userQuery);
+        
+      //   if (!userSnapshot.empty) {
+      //     // User exists, update workshopAccess
+      //     const userDoc = userSnapshot.docs[0];
+      //     await updateDoc(userDoc.ref, {
+      //       workshopAccess: true
+      //     });
+      
+      //     try {
+      //       await sendInviteEmail(paymentEntity.email, {
+      //         amount: paymentEntity.amount / 100,
+      //         paymentId: paymentId
+      //       });
+      //     } catch (emailError) {
+      //       console.error('Failed to send invite email:', emailError);
+      //     }
+      //   }
+      // }
 
       return true;
       } catch (writeError) {
