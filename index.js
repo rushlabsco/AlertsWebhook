@@ -383,42 +383,138 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Email sending function
 async function sendInviteEmail(email, paymentDetails) {
-  const emailText = `🏔️ Your Hiking Adventure Begins Now! 🌄
+  // Ensure paymentDetails includes all required fields
+  const fullPaymentDetails = {
+      amount: paymentDetails.amount,
+      paymentId: paymentDetails.paymentId,
+      paymentDate: paymentDetails.paymentDate || new Date().toLocaleDateString()
+  };
 
-Hello Adventurer,
+  // Read the HTML template
+  let emailHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 20px;
+        }
+        .cta-button {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            padding: 12px;
+            background-color: #27ae60;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .details-section {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .footer {
+            background-color: #ecf0f1;
+            text-align: center;
+            padding: 15px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .emoji {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>🏔️ Your Hiking Workshop Access</h1>
+        </div>
+        
+        <div class="content">
+            <p>Hello Adventurer,</p>
+            
+            <p>Exciting news! Your payment for the Hiking Workshop has been successfully processed.</p>
+            
+            <div class="details-section">
+                <h3>🎫 Workshop Access</h3>
+                <p>
+                    <span class="emoji">✅</span> Your account is now active<br>
+                    <span class="emoji">🌐</span> Log in or sign up at: <a href="https://manav.in">manav.in</a>
+                </p>
+                <p><strong>Note:</strong> Please use the email address you used for the payment to access the workshop.</p>
+            </div>
+            
+            <div class="details-section">
+                <h3>💰 Payment Details</h3>
+                <p>
+                    <span class="emoji">💳</span> Amount Paid: ₹{paymentDetails.amount}<br>
+                    <span class="emoji">🔢</span> Payment ID: {paymentDetails.paymentId}<br>
+                    <span class="emoji">📅</span> Payment Date: {paymentDetails.paymentDate}
+                </p>
+            </div>
+            
+            <a href="https://manav.in" class="cta-button">Access Workshop</a>
+            
+            <h3>🚀 Next Steps</h3>
+            <ol>
+                <li>Visit <a href="https://manav.in">manav.in</a></li>
+                <li>Log in with your registered email</li>
+                <li>Explore your workshop details</li>
+            </ol>
+            
+            <p>Reminder: First-time users should use the email used for payment to create an account.</p>
+        </div>
+        
+        <div class="footer">
+            <p>Happy Hiking! | Manav Workshop Team</p>
+            <p>Questions? Contact: support@manav.in</p>
+        </div>
+    </div>
+</body>
+</html>`;
 
-Exciting news! Your payment for the Hiking Workshop has been successfully processed. 
-
-✅ WORKSHOP ACCESS
-• Your account is now active
-• Log in or sign up at: https://manav.in
-• Note: Please use the email address you used for the payment to access the workshop.
-
-
-💰 PAYMENT DETAILS
-• Amount Paid: ₹${paymentDetails.amount}
-• Payment ID: ${paymentDetails.paymentId}
-
-🚀 NEXT STEPS
-1. Visit https://manav.in
-2. Log in with your registered email
-3. Explore your workshop details
-
-Reminder: If this is your first time, use the email you used for payment to create your account.
-
-Happy Hiking!
-Manav
-
-Questions? Contact us at support@manav.in
-`;
+  // Replace placeholders with actual payment details
+  emailHtml = emailHtml.replace(/{paymentDetails.amount}/g, fullPaymentDetails.amount)
+                       .replace(/{paymentDetails.paymentId}/g, fullPaymentDetails.paymentId)
+                       .replace(/{paymentDetails.paymentDate}/g, fullPaymentDetails.paymentDate);
 
   const emailTemplate = {
       from: process.env.EMAIL_USER,
       to: email,
       subject: '🏞️ Your Hiking Workshop Access is Ready!',
-      text: emailText
+      html: emailHtml,
+      text: ''// Plain text fallback version of the email
   };
 
   try {
