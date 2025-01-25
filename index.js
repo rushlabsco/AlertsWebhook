@@ -385,55 +385,49 @@ const transporter = nodemailer.createTransport({
 
 // Email sending function
 async function sendInviteEmail(email, paymentDetails) {
-  const emailTemplate = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: 'Hiking Workshop Access: Ready to Go!',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="text-align:center;">Get Ready to Hike! ⛰️</h2>
+  const emailText = `
+  Get Ready to Hike! ⛰️
 
-        <p style="text-align:center;">Your payment has been received. Let's get you started!</p>
+  Your payment has been received. Let's get you started!
 
-        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <h3>Payment Details:</h3>
-          <p>Amount Paid: ₹${paymentDetails.amount}</p>
-          <p>Payment ID: ${paymentDetails.paymentId}</p>
-        </div>
-
-        <div style="margin: 20px 0;">
-          <p>
-            ${
-              true // Assume 'true' here since we are not checking if user exist, add logic here if user exists.
-                ? '<strong>Existing User?</strong> Simply log in to your account.'
-                : '<strong>New User?</strong> Sign up with the email you used to make the payment.'
-            }
-          </p>
-        </div>
-
-        <div style="text-align:center;">
-          <a href="https://manav.in"
-             style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-            Access Your Account
-          </a>
-        </div>
-
-
-        <p style="margin-top:20px; text-align: center;">Happy Hiking!</p>
-
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-          <p style="color: #666;">Best regards,<br>The Workshop Team</p>
-        </div>
-      </div>
-    `
-  };
-
-  try {
-    await transporter.sendMail(emailTemplate);
-    console.log('Invite email sent successfully to:', email);
-    return true;
-  } catch (error) {
-    console.error('Error sending invite email:', error);
-    throw error;
+  --------------------------------------------------
+  
+  ${
+    true // Assume 'true' here since we are not checking if user exist, add logic here if user exists.
+      ? 'Existing User? Simply log in to your account.'
+      : 'New User? Sign up with the email you used to make the payment.'
   }
+
+  
+  Access Your Account: https://app.manav.in
+
+  --------------------------------------------------
+  
+  Happy Hiking!
+  
+  Best regards,
+  The Workshop Team
+
+  --------------------------------------------------
+  Payment Details:
+  Amount Paid: ₹${paymentDetails.amount}
+  Payment ID: ${paymentDetails.paymentId}
+  `;
+
+
+const emailTemplate = {
+  from: process.env.EMAIL_USER,
+  to: email,
+  subject: 'Hiking Workshop Access: Ready to Go!',
+  text: emailText, //Use text instead of HTML, so that format is not changed.
+};
+
+try {
+  await transporter.sendMail(emailTemplate);
+  console.log('Invite email sent successfully to:', email);
+  return true;
+} catch (error) {
+  console.error('Error sending invite email:', error);
+  throw error;
+}
 }
