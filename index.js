@@ -227,7 +227,9 @@ app.post("/Payment", async (req, res) => {
         break;
       
       default:
-        console.log(req.body)
+        console.log(req.body);
+        console.log(req.body.payload.payment);
+        console.log('Payment ID:', req.body.payload.payment.entity.id);
         console.log('Unhandled event type:', req.body.event);
     }
 
