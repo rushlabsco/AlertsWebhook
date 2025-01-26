@@ -222,10 +222,12 @@ app.post("/Payment", async (req, res) => {
       case 'payment.captured':
       case 'payment.failed':
         console.log(`Processing ${req.body.event} event`);
+        console.log(req.body)
         await savePaymentDetails(req.body);
         break;
       
       default:
+        console.log(req.body)
         console.log('Unhandled event type:', req.body.event);
     }
 
