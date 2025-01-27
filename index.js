@@ -388,6 +388,7 @@ app.all("/webhook", async (req, res) => {
 
 app.get("/", (req, res) => {
   res.status(200).send("Hello, this is webhook setup");
+  console.log("SERVER Jagte raho payment aa sakti hai!")
 });
 
 const signature = crypto
