@@ -501,7 +501,7 @@ async function sendInviteEmail(email, paymentDetails) {
   const emailTemplate = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'Your Hiking Workshop Access',
+      subject: 'Access Your Workshop: Growth Blueprint for Hikers by Manav',
       html: emailHtml,
       text: `Hi,
 
