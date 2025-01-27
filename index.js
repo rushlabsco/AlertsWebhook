@@ -447,6 +447,9 @@ async function sendInviteEmail(email, paymentDetails) {
             border-radius: 5px;
             margin: 10px 0;
         }
+        .payment-section {
+            color: #666666;  /* Grey color for payment section */
+        }
         a {
             color: #2196F3;
             text-decoration: none;
@@ -467,8 +470,8 @@ async function sendInviteEmail(email, paymentDetails) {
             <p>Thank you for purchasing the workshop <a href="http://manav.in/workshop">Growth Blueprint for Hikers</a></p>
             
             <div class="highlighted-section">
-                <p ><strong>Access:</strong> Login at <a href="http://app.manav.in">app.manav.in</a> to watch the workshop</p>
-                <p ><strong>Important:</strong> Please use the same email ID that you used for the payment to access the workshop.</p>
+                <p><strong>Access:</strong> Login at <a href="http://app.manav.in">app.manav.in</a> to watch the workshop</p>
+                <p><strong>Important:</strong> Please use the same email ID that you used for the payment to access the workshop.</p>
             </div>
             
             <p>Keep hiking!<br>Manav</p>
@@ -476,7 +479,7 @@ async function sendInviteEmail(email, paymentDetails) {
 
         <div class="divider"></div>
 
-        <div class="highlighted-section">
+        <div class="highlighted-section payment-section">
             <p><strong>Payment Details</strong></p>
             <p>
                 Amount Paid: ₹{paymentDetails.amount}<br>
