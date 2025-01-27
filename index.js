@@ -427,101 +427,64 @@ async function sendInviteEmail(email, paymentDetails) {
             color: #333;
             max-width: 600px;
             margin: 0 auto;
-            background-color: #f4f4f4;
+            padding: 20px;
         }
         .email-container {
             background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            color: white;
-            text-align: center;
+            border-radius: 5px;
             padding: 20px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
         }
         .content {
-            padding: 20px;
+            margin-bottom: 20px;
         }
-        .cta-button {
-            display: block;
-            width: 200px;
-            margin: 20px auto;
-            padding: 12px;
-            background-color: #27ae60;
-            color: white;
-            text-align: center;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
+        .divider {
+            border-top: 1px solid #eee;
+            margin: 20px 0;
         }
-        .details-section {
+        .highlighted-section {
             background-color: #f9f9f9;
+            padding: 15px;
             border-radius: 5px;
-            padding: 15px;
-            margin: 15px 0;
+            margin: 10px 0;
         }
-        .footer {
-            background-color: #ecf0f1;
-            text-align: center;
-            padding: 15px;
-            font-size: 0.9em;
-            color: #7f8c8d;
+        a {
+            color: #2196F3;
+            text-decoration: none;
         }
-        .emoji {
-            margin-right: 10px;
+        a:hover {
+            text-decoration: underline;
+        }
+        .bold {
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="email-container">
-        <div class="header">
-            <h1>🏔️ Your Hiking Workshop Access</h1>
-        </div>
-        
         <div class="content">
-            <p>Hello Adventurer,</p>
+            <p>Hi,</p>
             
-            <p>Exciting news! Your payment for the Hiking Workshop has been successfully processed.</p>
+            <p>Thank you for purchasing the workshop <a href="http://manav.in/workshop">Growth Blueprint for Hikers</a></p>
             
-            <div class="details-section">
-                <h3>🎫 Workshop Access</h3>
-                <p>
-                    <span class="emoji">✅</span> Your account is now active<br>
-                    <span class="emoji">🌐</span> Log in or sign up at: <a href="https://manav.in">manav.in</a>
-                </p>
-                <p><strong>Note:</strong> Please use the email address you used for the payment to access the workshop.</p>
+            <div class="highlighted-section">
+                <p ><strong>Access:</strong> Login at <a href="http://app.manav.in">app.manav.in</a> to watch the workshop</p>
+                <p ><strong>Important:</strong> Please use the same email ID that you used for the payment to access the workshop.</p>
             </div>
             
-            <div class="details-section">
-                <h3>💰 Payment Details</h3>
-                <p>
-                    <span class="emoji">💳</span> Amount Paid: ₹{paymentDetails.amount}<br>
-                    <span class="emoji">🔢</span> Payment ID: {paymentDetails.paymentId}<br>
-                    <span class="emoji">📅</span> Payment Date: {paymentDetails.paymentDate}
-                </p>
-            </div>
-            
-            <a href="https://manav.in" class="cta-button">Access Workshop</a>
-            
-            <h3>🚀 Next Steps</h3>
-            <ol>
-                <li>Visit <a href="https://manav.in">manav.in</a></li>
-                <li>Log in with your registered email</li>
-                <li>Explore your workshop details</li>
-            </ol>
-            
-            <p>Reminder: First-time users should use the email used for payment to create an account.</p>
+            <p>Keep hiking!<br>Manav</p>
         </div>
-        
-        <div class="footer">
-            <p>Happy Hiking! | Manav Workshop Team</p>
-            <p>Questions? Contact: support@manav.in</p>
+
+        <div class="divider"></div>
+
+        <div class="highlighted-section">
+            <h3>Payment Details</h3>
+            <p>
+                Amount Paid: ₹{paymentDetails.amount}<br>
+                Payment ID: {paymentDetails.paymentId}<br>
+                Payment Date: {paymentDetails.paymentDate}
+            </p>
+            
+            <p>For any support, contact me at <a href="mailto:hi@manav.in">hi@manav.in</a></p>
         </div>
     </div>
 </body>
@@ -535,9 +498,28 @@ async function sendInviteEmail(email, paymentDetails) {
   const emailTemplate = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: '🏞️ Your Hiking Workshop Access is Ready!',
+      subject: 'Your Hiking Workshop Access',
       html: emailHtml,
-      text: ''// Plain text fallback version of the email
+      text: `Hi,
+
+Thank you for purchasing the workshop Growth Blueprint for Hikers (http://manav.in/workshop)
+
+Access:
+Login at app.manav.in to watch the workshop
+
+Important:
+Please use the same email ID that you used for the payment to access the workshop.
+
+Keep hiking!
+Manav
+
+---
+Payment Details
+Amount Paid: ₹${fullPaymentDetails.amount}
+Payment ID: ${fullPaymentDetails.paymentId}
+Payment Date: ${fullPaymentDetails.paymentDate}
+
+For any support, contact me at hi@manav.in`
   };
 
   try {
@@ -549,3 +531,4 @@ async function sendInviteEmail(email, paymentDetails) {
       throw error;
   }
 }
+
