@@ -67,12 +67,14 @@ async function savePaymentDetails(paymentData) {
       throw new Error('Invalid payment ID');
     }
 
-    // console.log('Processing payment:', {
-    //   paymentId,
-    //   orderId: paymentEntity.order_id,
-    //   amount: paymentEntity.amount,
-    //   status: paymentEntity.status
-    // });
+    // Check if the payment is for one of the specific products
+    const validProductIds = ['001', '002'];
+    const productId = paymentEntity.notes?.productId;
+    
+    if (!productId || !validProductIds.includes(productId)) {
+      console.log('Skipping payment save - not a target product:', productId);
+      return true;
+    }
 
     return await db.runTransaction(async (transaction) => {
       // 1. Validate and perform reads
@@ -142,47 +144,19 @@ async function savePaymentDetails(paymentData) {
         }
 
         // After successful transaction, send invite email
-      if (paymentEntity.status === 'captured' && paymentEntity.email) {
-        try {
-          
-          await sendInviteEmail(paymentEntity.email, {
-            amount: paymentEntity.amount / 100,
-            paymentId: paymentId
-          });
-        } catch (emailError) {
-          // Log email error but don't fail the transaction
-          console.error('Failed to send invite email:', emailError);
+        if (paymentEntity.status === 'captured' && paymentEntity.email) {
+          try {
+            await sendInviteEmail(paymentEntity.email, {
+              amount: paymentEntity.amount / 100,
+              paymentId: paymentId
+            });
+          } catch (emailError) {
+            // Log email error but don't fail the transaction
+            console.error('Failed to send invite email:', emailError);
+          }
         }
-      }
 
-      // if (paymentEntity.status === 'captured' && paymentEntity.email) {
-      //   // Check if user exists in UserTable
-      //   const userQuery = query(
-      //     collection(db, "UserTable"), 
-      //     where("email", "==", paymentEntity.email)
-      //   );
-        
-      //   const userSnapshot = await getDocs(userQuery);
-        
-      //   if (!userSnapshot.empty) {
-      //     // User exists, update workshopAccess
-      //     const userDoc = userSnapshot.docs[0];
-      //     await updateDoc(userDoc.ref, {
-      //       workshopAccess: true
-      //     });
-      
-      //     try {
-      //       await sendInviteEmail(paymentEntity.email, {
-      //         amount: paymentEntity.amount / 100,
-      //         paymentId: paymentId
-      //       });
-      //     } catch (emailError) {
-      //       console.error('Failed to send invite email:', emailError);
-      //     }
-      //   }
-      // }
-
-      return true;
+        return true;
       } catch (writeError) {
         console.error('Transaction write error:', writeError);
         throw writeError;
