@@ -477,7 +477,7 @@ async function sendInviteEmail(email, paymentDetails) {
         <div class="divider"></div>
 
         <div class="highlighted-section">
-            <h3>Payment Details</h3>
+            <p><strong>Payment Details</strong></p>
             <p>
                 Amount Paid: ₹{paymentDetails.amount}<br>
                 Payment ID: {paymentDetails.paymentId}<br>
