@@ -49,6 +49,33 @@ function verifyRazorpayWebhook(rawBody, signature) {
   }
 }
 
+// Helper function to capture Razorpay payment
+async function captureRazorpayPayment(paymentId, amount, currency) {
+  const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+  const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  try {
+    const response = await axios.post(
+      `https://api.razorpay.com/v1/payments/${paymentId}/capture`,
+      { amount, currency },
+      {
+        auth: {
+          username: razorpayKeyId,
+          password: razorpayKeySecret
+        },
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Razorpay capture API error:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+}
+
 
 async function savePaymentDetails(paymentData) {
   try {
@@ -193,6 +220,27 @@ app.post("/Payment", async (req, res) => {
     }
 
     switch (req.body.event) {
+      case 'payment.authorized':
+        try {
+          // Extract payment details
+          const paymentId = req.body.payload.payment.entity.id;
+          const amount = req.body.payload.payment.entity.amount;
+          const currency = req.body.payload.payment.entity.currency;
+
+          // Capture the payment
+          const captureResponse = await captureRazorpayPayment(paymentId, amount, currency);
+          
+          console.log('Payment captured:', captureResponse);
+          // await savePaymentDetails({
+          //   ...req.body,
+          //   captureResponse
+          // });
+          break;
+        } catch (captureError) {
+          console.error('Payment capture failed:', captureError);
+          // Optionally log the failure or handle it as needed
+        }
+
       case 'payment.captured':
       case 'payment.failed':
         console.log(`Processing ${req.body.event} event`);
@@ -201,13 +249,13 @@ app.post("/Payment", async (req, res) => {
       
       default:
         console.log('Unhandled event type:', req.body.event);
+        console.log(req.body);
     }
 
     return res.status(200).json({ status: 'success' });
 
   } catch (error) {
     console.error('Webhook processing error:', error);
-    // Still return 200 to prevent retries
     return res.status(200).json({ 
       status: 'error logged',
       message: error.message 
