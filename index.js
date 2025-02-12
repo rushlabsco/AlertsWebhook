@@ -110,16 +110,10 @@ async function savePaymentDetails(paymentData) {
       
       let orderDoc;
       let userDoc;
-      let UserTable;
+
   
       
       if (paymentEntity.status === 'captured') {
-
-        if (paymentEntity.email){
-          const userRef = db.collection('UserTable').doc(email.toString());
-          UserTable = await transaction.get(userRef);
-        }
-
         if (paymentEntity.order_id) {
           const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
           orderDoc = await transaction.get(orderRef);
@@ -160,16 +154,6 @@ async function savePaymentDetails(paymentData) {
         transaction.set(paymentRef, payment);
 
         if (paymentEntity.status === 'captured') {
-
-          if (UserTable.exists) {
-            console.log("User found:", UserTable.data());
-            const userRef2 = db.collection('UserTable').doc(paymentEntity.email.toString());
-            transaction.update(userRef2, { workshopAccess: true });
-
-            console.log("workshopAccess updated to true.");
-        } else {
-            console.log("No user found with this email.");
-        }
 
           if (orderDoc && orderDoc.exists && paymentEntity.order_id) {
             const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
