@@ -163,7 +163,7 @@ async function savePaymentDetails(paymentData) {
 
           if (UserTable.exists) {
             console.log("User found:", UserTable.data());
-            const userRef2 = db.collection('UserTable').doc(email.toString());
+            const userRef2 = db.collection('UserTable').doc(paymentEntity.email.toString());
             transaction.update(userRef2, { workshopAccess: true });
 
             console.log("workshopAccess updated to true.");
