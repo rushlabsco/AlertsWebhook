@@ -273,7 +273,7 @@ async function updateWorkshopAccess(email) {
   try {
     // Query for the user document
     const userSnapshot = await db.collection('UserTable')
-      .where('email', '==', email.toString())
+      .where('Email', '==', email.toString())
       .get();
 
     // Check if any documents were found
@@ -285,9 +285,9 @@ async function updateWorkshopAccess(email) {
       await userDoc.ref.update({
         workshopAccess: true
       });
-      return "workshopAccess updated to true.";
+      return "workshopAccess updated to true: " + email;
     } else {
-      return "No user found with this email.";
+      return "No user found with this email: " + email;
     }
   } catch (error) {
     console.error("Error updating workshop access:", error);
