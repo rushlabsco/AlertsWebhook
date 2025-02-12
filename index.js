@@ -232,15 +232,15 @@ app.post("/Payment", async (req, res) => {
           const paymentId = req.body.payload.payment.entity.id;
           const amount = req.body.payload.payment.entity.amount;
           const currency = req.body.payload.payment.entity.currency;
+          const email = req.body.payload.payment.entity.email
 
           // Capture the payment
           const captureResponse = await captureRazorpayPayment(paymentId, amount, currency);
-          
+          const UserAccess = await updateWorkshopAccess(email);
+
+          console.log('Workshop Access:',UserAccess);
           console.log('Payment captured:', captureResponse);
-          // await savePaymentDetails({
-          //   ...req.body,
-          //   captureResponse
-          // });
+
           break;
         } catch (captureError) {
           console.error('Payment capture failed:', captureError);
@@ -269,6 +269,31 @@ app.post("/Payment", async (req, res) => {
   }
 });
 
+async function updateWorkshopAccess(email) {
+  try {
+    // Query for the user document
+    const userSnapshot = await db.collection('UserTable')
+      .where('email', '==', email.toString())
+      .get();
+
+    // Check if any documents were found
+    if (!userSnapshot.empty) {
+      // Get the first matching document
+      const userDoc = userSnapshot.docs[0];
+      
+      // Update the document
+      await userDoc.ref.update({
+        workshopAccess: true
+      });
+      return "workshopAccess updated to true.";
+    } else {
+      return "No user found with this email.";
+    }
+  } catch (error) {
+    console.error("Error updating workshop access:", error);
+    throw error;
+  }
+}
 
 async function logToFirestore(logData) {
   try {
