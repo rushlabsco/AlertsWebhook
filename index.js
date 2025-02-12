@@ -248,7 +248,7 @@ app.post("/Payment", async (req, res) => {
       case 'payment.captured':
 
         const email = req.body.payload.payment.entity.email
-        
+
         console.log(`Processing ${req.body.event} event`);
         await savePaymentDetails(req.body);
         const UserAccess = await updateWorkshopAccess(email);
@@ -443,149 +443,6 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-async function sendInviteEmail(email, paymentDetails) {
-  // Ensure paymentDetails includes all required fields
-  const fullPaymentDetails = {
-      amount: paymentDetails.amount,
-      paymentId: paymentDetails.paymentId,
-      paymentDate: paymentDetails.paymentDate || new Date().toLocaleDateString()
-  };
-
-  // Read the HTML template
-  let emailHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #f4f4f4;
-        }
-        .email-container {
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            color: white;
-            text-align: center;
-            padding: 20px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        .content {
-            padding: 20px;
-        }
-        .cta-button {
-            display: block;
-            width: 200px;
-            margin: 20px auto;
-            padding: 12px;
-            background-color: #27ae60;
-            color: white;
-            text-align: center;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .details-section {
-            background-color: #f9f9f9;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 15px 0;
-        }
-        .footer {
-            background-color: #ecf0f1;
-            text-align: center;
-            padding: 15px;
-            font-size: 0.9em;
-            color: #7f8c8d;
-        }
-        .emoji {
-            margin-right: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="email-container">
-        <div class="header">
-            <h1>🏔️ Your Hiking Workshop Access</h1>
-        </div>
-        
-        <div class="content">
-            <p>Hello Adventurer,</p>
-            
-            <p>Exciting news! Your payment for the Hiking Workshop has been successfully processed.</p>
-            
-            <div class="details-section">
-                <h3>🎫 Workshop Access</h3>
-                <p>
-                    <span class="emoji">✅</span> Your account is now active<br>
-                    <span class="emoji">🌐</span> Log in or sign up at: <a href="https://manav.in">manav.in</a>
-                </p>
-                <p><strong>Note:</strong> Please use the email address you used for the payment to access the workshop.</p>
-            </div>
-            
-            <div class="details-section">
-                <h3>💰 Payment Details</h3>
-                <p>
-                    <span class="emoji">💳</span> Amount Paid: ₹{paymentDetails.amount}<br>
-                    <span class="emoji">🔢</span> Payment ID: {paymentDetails.paymentId}<br>
-                    <span class="emoji">📅</span> Payment Date: {paymentDetails.paymentDate}
-                </p>
-            </div>
-            
-            <a href="https://manav.in" class="cta-button">Access Workshop</a>
-            
-            <h3>🚀 Next Steps</h3>
-            <ol>
-                <li>Visit <a href="https://manav.in">manav.in</a></li>
-                <li>Log in with your registered email</li>
-                <li>Explore your workshop details</li>
-            </ol>
-            
-            <p>Reminder: First-time users should use the email used for payment to create an account.</p>
-        </div>
-        
-        <div class="footer">
-            <p>Happy Hiking! | Manav Workshop Team</p>
-            <p>Questions? Contact: support@manav.in</p>
-        </div>
-    </div>
-</body>
-</html>`;
-
-  // Replace placeholders with actual payment details
-  emailHtml = emailHtml.replace(/{paymentDetails.amount}/g, fullPaymentDetails.amount)
-                       .replace(/{paymentDetails.paymentId}/g, fullPaymentDetails.paymentId)
-                       .replace(/{paymentDetails.paymentDate}/g, fullPaymentDetails.paymentDate);
-
-  const emailTemplate = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: '🏞️ Your Hiking Workshop Access is Ready!',
-      html: emailHtml,
-      text: ''// Plain text fallback version of the email
-  };
-
-  try {
-      await transporter.sendMail(emailTemplate);
-      console.log('Invite email sent successfully to:', email);
-      return true;
-  } catch (error) {
-      console.error('Error sending invite email:', error);
-      throw error;
-  }
-}
 
 async function savePaymentDetailsFailed(paymentData) {
   try {
@@ -693,6 +550,117 @@ async function savePaymentDetailsFailed(paymentData) {
   } catch (error) {
     console.error('Save payment details error:', error);
     console.error('Payment data:', JSON.stringify(paymentData, null, 2));
+    throw error;
+  }
+}
+
+async function sendInviteEmail(email, paymentDetails) {
+  // Ensure paymentDetails includes all required fields
+  const fullPaymentDetails = {
+    amount: paymentDetails.amount,
+    paymentId: paymentDetails.paymentId,
+    paymentDate: paymentDetails.paymentDate || new Date().toLocaleDateString()
+  };
+
+  // Simple plain HTML template
+  let emailHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .content {
+            background: #fff;
+            padding: 20px;
+        }
+        .workshop-title {
+            font-size: 18px;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+        .access-info {
+            background: #f7f7f7;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .payment-details {
+            margin-top: 20px;
+            color: #666;
+            background: #f7f7f7;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .signature {
+            margin-top: 20px;
+        }
+        .signature-line {
+            border-bottom: 1px solid #ddd;
+            margin: 10px 0;
+        }
+        a {
+            color: #000;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <p>Hi,</p>
+        
+        <p>Thank you for purchasing the workshop <a href="https://manav.in/workshop">Growth Blueprint for Hikers</a></p>
+        
+        <div class="access-info">
+            <p><strong>Access:</strong> Login at <a href="https://app.manav.in">app.manav.in</a> to watch the workshop</p>
+            <p><strong>Important:</strong> Please use the same email ID that you used for the payment to access the workshop.</p>
+        </div>
+        
+        <div class="signature">
+            <p>Keep hiking!</p>
+            <p>Manav</p>
+            <div class="signature-line"></div>
+        </div>
+
+        <div class="payment-details">
+            <h3>Payment Details</h3>
+            <p>Amount Paid: ₹{paymentDetails.amount}</p>
+            <p>Payment ID: {paymentDetails.paymentId}</p>
+            <p>Payment Date: {paymentDetails.paymentDate}</p>
+        </br>
+            <p>For any support, contact me at hi@manav.in</p>
+        </div>
+        
+        
+    </div>
+</body>
+</html>`;
+
+  // Replace placeholders with actual payment details
+  emailHtml = emailHtml.replace(/{paymentDetails.amount}/g, fullPaymentDetails.amount)
+                       .replace(/{paymentDetails.paymentId}/g, fullPaymentDetails.paymentId)
+                       .replace(/{paymentDetails.paymentDate}/g, fullPaymentDetails.paymentDate);
+
+  const emailTemplate = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Access Your Workshop: Growth Blueprint for Hikers',
+    html: emailHtml,
+    text: '' // Plain text fallback version of the email
+  };
+
+  try {
+    await transporter.sendMail(emailTemplate);
+    console.log('Invite email sent successfully to:', email);
+    return true;
+  } catch (error) {
+    console.error('Error sending invite email:', error);
     throw error;
   }
 }
