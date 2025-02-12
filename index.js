@@ -110,9 +110,15 @@ async function savePaymentDetails(paymentData) {
       
       let orderDoc;
       let userDoc;
+      let UserTable;
   
       
       if (paymentEntity.status === 'captured') {
+
+        if (paymentEntity.email){
+          const userRef = db.collection('UserTable').doc(email.toString());
+          UserTable = await transaction.get(userRef);
+        }
 
         if (paymentEntity.order_id) {
           const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
@@ -120,8 +126,8 @@ async function savePaymentDetails(paymentData) {
         }
         
         if (paymentEntity.notes?.userId) {
-          const userRef = db.collection('users').doc(paymentEntity.notes.userId.toString());
-          userDoc = await transaction.get(userRef);
+          const userRef2 = db.collection('users').doc(paymentEntity.notes.userId.toString());
+          userDoc = await transaction.get(userRef2);
         }
       }
 
@@ -154,6 +160,17 @@ async function savePaymentDetails(paymentData) {
         transaction.set(paymentRef, payment);
 
         if (paymentEntity.status === 'captured') {
+
+          if (UserTable.exists) {
+            console.log("User found:", UserTable.data());
+            const userRef2 = db.collection('UserTable').doc(email.toString());
+            transaction.update(userRef2, { workshopAccess: true });
+
+            console.log("workshopAccess updated to true.");
+        } else {
+            console.log("No user found with this email.");
+        }
+
           if (orderDoc && orderDoc.exists && paymentEntity.order_id) {
             const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
             transaction.update(orderRef, {
@@ -181,8 +198,6 @@ async function savePaymentDetails(paymentData) {
               paymentId: paymentId
             });
 
-            await updateWorkshopAccess(transaction, paymentEntity.email);
-
           } catch (emailError) {
             // Log email error but don't fail the transaction
             console.error('Failed to send invite email:', emailError);
@@ -203,21 +218,6 @@ async function savePaymentDetails(paymentData) {
   }
 }
 
-async function updateWorkshopAccess(transaction, email) {
-  const userRef = db.collection('UserTable').doc(email.toString());
-  const UserTable = await transaction.get(userRef);
-
-  if (UserTable.exists) {
-      console.log("User found:", UserTable.data());
-
-      // Updating the field `workshopAccess` to `true`
-      await transaction.update(userRef, { workshopAccess: true });
-
-      console.log("workshopAccess updated to true.");
-  } else {
-      console.log("No user found with this email.");
-  }
-}
 
 // Updated webhook endpoint with better error handling
 app.post("/Payment", async (req, res) => {
