@@ -110,8 +110,10 @@ async function savePaymentDetails(paymentData) {
       
       let orderDoc;
       let userDoc;
+  
       
       if (paymentEntity.status === 'captured') {
+
         if (paymentEntity.order_id) {
           const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
           orderDoc = await transaction.get(orderRef);
@@ -172,11 +174,24 @@ async function savePaymentDetails(paymentData) {
 
         // After successful transaction, send invite email
         if (paymentEntity.status === 'captured' && paymentEntity.email) {
+          let UserTable
           try {
             await sendInviteEmail(paymentEntity.email, {
               amount: paymentEntity.amount / 100,
               paymentId: paymentId
             });
+            const userRef = db.collection('UserTable').doc(paymentEntity.email.toString());
+            UserTable = await transaction.get(userRef);
+            
+            if (UserTable.exists) {
+                const userData = UserTable.data(); // Extracting document data
+                console.log(userData);
+                 // Updating the field `workshopAccess` to `true`
+                transaction.update(userRef, { workshopAccess: true });
+                
+            } else {
+                console.log("No user found with this email.");
+            }
           } catch (emailError) {
             // Log email error but don't fail the transaction
             console.error('Failed to send invite email:', emailError);
