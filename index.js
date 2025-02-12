@@ -232,13 +232,11 @@ app.post("/Payment", async (req, res) => {
           const paymentId = req.body.payload.payment.entity.id;
           const amount = req.body.payload.payment.entity.amount;
           const currency = req.body.payload.payment.entity.currency;
-          const email = req.body.payload.payment.entity.email
+          
 
           // Capture the payment
           const captureResponse = await captureRazorpayPayment(paymentId, amount, currency);
-          const UserAccess = await updateWorkshopAccess(email);
-
-          console.log('Workshop Access:',UserAccess);
+          
           console.log('Payment captured:', captureResponse);
 
           break;
@@ -248,9 +246,18 @@ app.post("/Payment", async (req, res) => {
         }
 
       case 'payment.captured':
-      case 'payment.failed':
+
+        const email = req.body.payload.payment.entity.email
+        
         console.log(`Processing ${req.body.event} event`);
         await savePaymentDetails(req.body);
+        const UserAccess = await updateWorkshopAccess(email);
+        console.log('Workshop Access:',UserAccess);
+        break;
+
+      case 'payment.failed':
+        console.log(`Processing ${req.body.event} event`);
+        await savePaymentDetailsFailed(req.body);
         break;
       
       default:
@@ -577,5 +584,115 @@ async function sendInviteEmail(email, paymentDetails) {
   } catch (error) {
       console.error('Error sending invite email:', error);
       throw error;
+  }
+}
+
+async function savePaymentDetailsFailed(paymentData) {
+  try {
+    // First validate that we have the required data
+    if (!paymentData?.payload?.payment?.entity?.id) {
+      console.error('Invalid payment data structure:', JSON.stringify(paymentData));
+      throw new Error('Invalid payment data: missing payment ID');
+    }
+
+    const paymentEntity = paymentData.payload.payment.entity;
+    const paymentId = paymentEntity.id;
+
+    // Validate paymentId
+    if (!paymentId || typeof paymentId !== 'string') {
+      console.error('Invalid paymentId:', paymentId);
+      throw new Error('Invalid payment ID');
+    }
+
+    // Check if the payment is for one of the specific products
+    const validProductIds = ['001', '002'];
+    const productId = paymentEntity.notes?.productId;
+    
+    if (!productId || !validProductIds.includes(productId)) {
+      console.log('Skipping payment save - not a target product:', productId);
+      return true;
+    }
+
+    return await db.runTransaction(async (transaction) => {
+      // 1. Validate and perform reads
+      const paymentRef = db.collection('payments').doc(paymentId.toString());
+      const paymentDoc = await transaction.get(paymentRef);
+      
+      let orderDoc;
+      let userDoc;
+
+  
+      
+      if (paymentEntity.status === 'captured') {
+        if (paymentEntity.order_id) {
+          const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
+          orderDoc = await transaction.get(orderRef);
+        }
+        
+        if (paymentEntity.notes?.userId) {
+          const userRef2 = db.collection('users').doc(paymentEntity.notes.userId.toString());
+          userDoc = await transaction.get(userRef2);
+        }
+      }
+
+      // 2. Check for existing payment
+      if (paymentDoc.exists) {
+        console.log('Payment already processed:', paymentId);
+        return true;
+      }
+
+      // 3. Prepare payment data
+      const payment = {
+        paymentId: paymentId,
+        orderId: paymentEntity.order_id || null,
+        amount: paymentEntity.amount / 100,
+        currency: paymentEntity.currency || 'INR',
+        status: paymentEntity.status,
+        method: paymentEntity.method,
+        email: paymentEntity.email || null,
+        contact: paymentEntity.contact || null,
+        notes: paymentEntity.notes || {},
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        metadata: {
+          rawResponse: paymentEntity,
+          webhookEvent: paymentData.event
+        }
+      };
+
+      // 4. Perform writes
+      try {
+        transaction.set(paymentRef, payment);
+
+        if (paymentEntity.status === 'captured') {
+
+          if (orderDoc && orderDoc.exists && paymentEntity.order_id) {
+            const orderRef = db.collection('orders').doc(paymentEntity.order_id.toString());
+            transaction.update(orderRef, {
+              paymentStatus: 'completed',
+              paymentId: paymentId,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
+
+          if (userDoc && userDoc.exists && paymentEntity.notes?.userId) {
+            const userRef = db.collection('users').doc(paymentEntity.notes.userId.toString());
+            transaction.update(userRef, {
+              hasAccess: true,
+              accessGrantedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        }
+
+        return true;
+      } catch (writeError) {
+        console.error('Transaction write error:', writeError);
+        throw writeError;
+      }
+    });
+
+  } catch (error) {
+    console.error('Save payment details error:', error);
+    console.error('Payment data:', JSON.stringify(paymentData, null, 2));
+    throw error;
   }
 }
