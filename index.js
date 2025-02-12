@@ -174,24 +174,15 @@ async function savePaymentDetails(paymentData) {
 
         // After successful transaction, send invite email
         if (paymentEntity.status === 'captured' && paymentEntity.email) {
-          let UserTable
           try {
+
             await sendInviteEmail(paymentEntity.email, {
               amount: paymentEntity.amount / 100,
               paymentId: paymentId
             });
-            const userRef = db.collection('UserTable').doc(paymentEntity.email.toString());
-            UserTable = await transaction.get(userRef);
-            
-            if (UserTable.exists) {
-                const userData = UserTable.data(); // Extracting document data
-                console.log(userData);
-                 // Updating the field `workshopAccess` to `true`
-                transaction.update(userRef, { workshopAccess: true });
-                
-            } else {
-                console.log("No user found with this email.");
-            }
+
+            await updateWorkshopAccess(transaction, paymentEntity.email);
+
           } catch (emailError) {
             // Log email error but don't fail the transaction
             console.error('Failed to send invite email:', emailError);
@@ -209,6 +200,22 @@ async function savePaymentDetails(paymentData) {
     console.error('Save payment details error:', error);
     console.error('Payment data:', JSON.stringify(paymentData, null, 2));
     throw error;
+  }
+}
+
+async function updateWorkshopAccess(transaction, email) {
+  const userRef = db.collection('UserTable').doc(email.toString());
+  const UserTable = await transaction.get(userRef);
+
+  if (UserTable.exists) {
+      console.log("User found:", UserTable.data());
+
+      // Updating the field `workshopAccess` to `true`
+      await transaction.update(userRef, { workshopAccess: true });
+
+      console.log("workshopAccess updated to true.");
+  } else {
+      console.log("No user found with this email.");
   }
 }
 
