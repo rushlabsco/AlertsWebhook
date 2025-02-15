@@ -6,6 +6,7 @@ const nodemailer = require('nodemailer');
 require('dotenv').config();
 //const csv = require('csv-parse');
 const csv = require('csv-parse/sync'); 
+const cors = require("cors");
 
 const admin = require('firebase-admin');
 const serviceAccount = {
@@ -28,7 +29,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 const app = express();
-
+app.use(cors()); 
 // Important: Use raw body parser for webhook signature verification
 app.use(bodyParser.json({
   verify: (req, res, buf) => {
