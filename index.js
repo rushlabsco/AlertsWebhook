@@ -4,8 +4,8 @@ const axios = require("axios");
 const crypto = require('node:crypto');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
-const csv = require('csv-parse');
-//const csv = require('csv-parse/sync'); 
+//const csv = require('csv-parse');
+const csv = require('csv-parse/sync'); 
 
 const admin = require('firebase-admin');
 const serviceAccount = {
@@ -431,50 +431,54 @@ app.get("/", (req, res) => {
 });
 
 const SPREADSHEET_ID = '117lxg4P1o3kBIR4TOJSgN-E1pm6WCZEhXQYxJsS1mCc';
-const SHEET_ID = 'gid=0';
+const SHEET_ID = '0';
+//https://docs.google.com/spreadsheets/d/117lxg4P1o3kBIR4TOJSgN-E1pm6WCZEhXQYxJsS1mCc/edit?gid=0#gid=0
 
 const fetchGearData = async (req, res) => {
-    try {
-        // Fetch CSV data from Google Sheets
-        const response = await axios.get(
-            `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${SHEET_ID}`
-        );
+  try {
+      // Updated URL for public sheets
+      const response = await axios.get(
+          `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_ID}`,
+          {
+              headers: {
+                  'Accept': 'text/csv'
+              }
+          }
+      );
 
-        // Parse CSV data synchronously
-        const records = csv.parse(response.data, {
-            columns: true,
-            skip_empty_lines: true
-        });
+      const records = csv.parse(response.data, {
+          columns: true,
+          skip_empty_lines: true
+      });
 
-        // Process and format the data
-        const formattedData = records.map(record => ({
-            category: record['Gear category'],
-            productName: record['Product name'],
-            productLink: record['Product link'],
-            recommendedBy: record['Recommended By'],
-            notes: record['Notes']
-                ? record['Notes']
-                    .split('-')
-                    .filter(note => note.trim())
-                    .map(note => note.trim())
-                : []
-        })).filter(item => item.category && item.productName);
+      const formattedData = records.map(record => ({
+          category: record['Gear category'],
+          productName: record['Product name'],
+          productLink: record['Product link'],
+          recommendedBy: record['Recommended By'],
+          notes: record['Notes']
+              ? record['Notes']
+                  .split('-')
+                  .filter(note => note.trim())
+                  .map(note => note.trim())
+              : []
+      })).filter(item => item.category && item.productName);
 
-        // Send the formatted response
-        return res.status(200).json({
-            success: true,
-            data: formattedData
-        });
+      return res.status(200).json({
+          success: true,
+          data: formattedData
+      });
 
-    } catch (error) {
-        console.error('Error fetching gear data:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Error fetching gear data',
-            error: error.message
-        });
-    }
+  } catch (error) {
+      console.error('Error fetching gear data:', error);
+      return res.status(500).json({
+          success: false,
+          message: 'Error fetching gear data',
+          error: error.message
+      });
+  }
 };
+
 
 // Express route setup
 app.get('/hiking-gear', fetchGearData);
