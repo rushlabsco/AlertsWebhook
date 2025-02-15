@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 const csv = require('csv-parse');
-const csv = require('csv-parse/sync'); 
+//const csv = require('csv-parse/sync'); 
 
 const admin = require('firebase-admin');
 const serviceAccount = {
