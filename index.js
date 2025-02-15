@@ -436,7 +436,6 @@ const SHEET_ID = '0';
 
 const fetchGearData = async (req, res) => {
   try {
-      // Updated URL for public sheets
       const response = await axios.get(
           `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_ID}`,
           {
@@ -455,9 +454,9 @@ const fetchGearData = async (req, res) => {
           category: record['Gear category'],
           productName: record['Product name'],
           productLink: record['Product link'],
-          recommendedBy: record['Recommended By'],
-          notes: record['Notes']
-              ? record['Notes']
+          recommendedBy: record['Recommended By\n(add your name)'], // **Updated Column Name**
+          notes: record['Notes\n(optional)']                  // **Updated Column Name**
+              ? record['Notes\n(optional)']                    // **Updated Column Name**
                   .split('-')
                   .filter(note => note.trim())
                   .map(note => note.trim())
