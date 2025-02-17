@@ -458,7 +458,7 @@ const fetchGearData = async (req, res) => {
           recommendedBy: record['Recommended By\n(add your name)'],
           notes: record['Notes\n(optional)']
               ? record['Notes\n(optional)']
-                  .split('-')
+                  //.split('-')
                   .filter(note => note.trim())
                   .map(note => note.trim())
               : []
