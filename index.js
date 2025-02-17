@@ -456,7 +456,7 @@ const fetchGearData = async (req, res) => {
           productName: record['Product name'],
           productLink: record['Product link'],
           productImage: record['Product Image'],
-          recommendedBy: record['Recommended By\n(add your name)'],
+          recommendedBy: record['Your Name'],
           notes: record['Notes\n(optional)']
               ? record['Notes\n(optional)']
                   //.split('-')
