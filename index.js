@@ -447,10 +447,11 @@ const fetchGearData = async (req, res) => {
       );
       const records = csv.parse(response.data, {
           columns: true,
-          skip_empty_lines: true
+          skip_empty_lines: true,
+          from_line: 2 
       });
       const formattedData = records.map(record => ({
-          broadCategory: record['Broad category'],
+          broadCategory: record['Filter'],
           category: record['Gear category'],
           productName: record['Product name'],
           productLink: record['Product link'],
