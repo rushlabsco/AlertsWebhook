@@ -431,8 +431,8 @@ app.get("/", (req, res) => {
   res.status(200).send("Hello, this is webhook setup");
 });
 
-//const SPREADSHEET_ID = '117lxg4P1o3kBIR4TOJSgN-E1pm6WCZEhXQYxJsS1mCc';
-const SPREADSHEET_ID = '1uz4M-m4GHQMUK3jTPr4AsHw1XJSurMwhP5cnn63Q968';
+//https://docs.google.com/spreadsheets/d/1BoZftPH5EAj29xLPrKcAZ_F7i1jYC9V6-BZDhMHeRm8/edit?usp=sharing
+const SPREADSHEET_ID = '1BoZftPH5EAj29xLPrKcAZ_F7i1jYC9V6-BZDhMHeRm8';
 const SHEET_ID = '0';
 
 const fetchGearData = async (req, res) => {
