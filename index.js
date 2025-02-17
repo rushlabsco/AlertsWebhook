@@ -431,9 +431,9 @@ app.get("/", (req, res) => {
   res.status(200).send("Hello, this is webhook setup");
 });
 
-const SPREADSHEET_ID = '117lxg4P1o3kBIR4TOJSgN-E1pm6WCZEhXQYxJsS1mCc';
+//const SPREADSHEET_ID = '117lxg4P1o3kBIR4TOJSgN-E1pm6WCZEhXQYxJsS1mCc';
+const SPREADSHEET_ID = '1uz4M-m4GHQMUK3jTPr4AsHw1XJSurMwhP5cnn63Q968';
 const SHEET_ID = '0';
-//https://docs.google.com/spreadsheets/d/117lxg4P1o3kBIR4TOJSgN-E1pm6WCZEhXQYxJsS1mCc/edit?gid=0#gid=0
 
 const fetchGearData = async (req, res) => {
   try {
@@ -445,19 +445,19 @@ const fetchGearData = async (req, res) => {
               }
           }
       );
-
       const records = csv.parse(response.data, {
           columns: true,
           skip_empty_lines: true
       });
-
       const formattedData = records.map(record => ({
+          broadCategory: record['Broad category'],
           category: record['Gear category'],
           productName: record['Product name'],
           productLink: record['Product link'],
-          recommendedBy: record['Recommended By\n(add your name)'], // **Updated Column Name**
-          notes: record['Notes\n(optional)']                  // **Updated Column Name**
-              ? record['Notes\n(optional)']                    // **Updated Column Name**
+          productImage: record['Product Image'],
+          recommendedBy: record['Recommended By\n(add your name)'],
+          notes: record['Notes\n(optional)']
+              ? record['Notes\n(optional)']
                   .split('-')
                   .filter(note => note.trim())
                   .map(note => note.trim())
@@ -468,7 +468,6 @@ const fetchGearData = async (req, res) => {
           success: true,
           data: formattedData
       });
-
   } catch (error) {
       console.error('Error fetching gear data:', error);
       return res.status(500).json({
