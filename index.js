@@ -459,6 +459,7 @@ const fetchGearData = async (req, res) => {
           notes: record['Notes\n(optional)']
               ? record['Notes\n(optional)']
                   //.split('-')
+                  .split('\n') 
                   .filter(note => note.trim())
                   .map(note => note.trim())
               : []
