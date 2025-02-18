@@ -450,21 +450,22 @@ const fetchGearData = async (req, res) => {
           skip_empty_lines: true,
           from_line: 2 
       });
+      
       const formattedData = records.map(record => ({
           broadCategory: record['Category'],
-          //category: record['Gear category'],
           productName: record['Product name'],
           productLink: record['Product link'],
           productImage: record['Product Image'],
           recommendedBy: record['Your Name'],
           notes: record['Notes\n(optional)']
               ? record['Notes\n(optional)']
-                  //.split('-')
                   .split('\n') 
                   .filter(note => note.trim())
                   .map(note => note.trim())
               : []
-      })).filter(item => item.category && item.productName);
+      })).filter(item => item.broadCategory && item.productName); // Changed from category to broadCategory
+
+      // console.log(formattedData);
 
       return res.status(200).json({
           success: true,
