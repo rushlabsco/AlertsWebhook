@@ -452,7 +452,7 @@ const fetchGearData = async (req, res) => {
       });
       const formattedData = records.map(record => ({
           broadCategory: record['Category'],
-          //category: record['Gear category'],
+          category: record['Gear category'],
           productName: record['Product name'],
           productLink: record['Product link'],
           productImage: record['Product Image'],
