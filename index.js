@@ -451,8 +451,8 @@ const fetchGearData = async (req, res) => {
           from_line: 2 
       });
       const formattedData = records.map(record => ({
-          broadCategory: record['Filter'],
-          category: record['Gear category'],
+          broadCategory: record['Category'],
+          //category: record['Gear category'],
           productName: record['Product name'],
           productLink: record['Product link'],
           productImage: record['Product Image'],
