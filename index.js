@@ -106,6 +106,13 @@ async function savePaymentDetails(paymentData) {
       return true;
     }
 
+    if (paymentData.payload.payment.entity.email) {
+      const email = paymentData.payload.payment.entity.email
+      console.log(email);
+      const UserAcess = await updateWorkshopAccess(email);
+      console.log(UserAcess);
+    }
+
     return await db.runTransaction(async (transaction) => {
       // 1. Validate and perform reads
       const paymentRef = db.collection('payments').doc(paymentId.toString());
@@ -250,12 +257,12 @@ app.post("/Payment", async (req, res) => {
 
       case 'payment.captured':
 
-        const email = req.body.payload.payment.entity.email
+        //const email = req.body.payload.payment.entity.email
 
         console.log(`Processing ${req.body.event} event`);
         await savePaymentDetails(req.body);
-        const UserAccess = await updateWorkshopAccess(email);
-        console.log('Workshop Access:',UserAccess);
+        // const UserAccess = await updateWorkshopAccess(email);
+        // console.log('Workshop Access:',UserAccess);
         break;
 
       case 'payment.failed':
