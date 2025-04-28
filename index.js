@@ -507,7 +507,7 @@ app.get('/osm-trail-data', async (req, res) => {
     const jsonString = doc.data().JSON;
     const jsonObject = JSON.parse(jsonString);
 
-    return res.status(200).json({ success: true, data: jsonObject });
+    return res.status(200).json(jsonObject);
   } catch (error) {
     console.error('Error fetching OsmTrailData:', error);
     return res.status(500).json({ success: false, message: 'Error fetching data', error: error.message });
