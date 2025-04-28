@@ -492,6 +492,28 @@ const fetchGearData = async (req, res) => {
 // Express route setup
 app.get('/hiking-gear', fetchGearData);
 
+// API to fetch JSON from OsmTrailData collection
+app.get('/osm-trail-data', async (req, res) => {
+  try {
+    // Fetch the document from the OsmTrailData collection
+    const docRef = db.collection('OsmTrailData').doc('123456789'); // Replace 'your-document-id' with the actual document ID
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ success: false, message: 'Document not found' });
+    }
+
+    // Parse the JSON field and remove the surrounding quotes
+    const jsonString = doc.data().JSON;
+    const jsonObject = JSON.parse(jsonString);
+
+    return res.status(200).json({ success: true, data: jsonObject });
+  } catch (error) {
+    console.error('Error fetching OsmTrailData:', error);
+    return res.status(500).json({ success: false, message: 'Error fetching data', error: error.message });
+  }
+});
+
 module.exports = {
     fetchGearData
 };
