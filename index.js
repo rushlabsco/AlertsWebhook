@@ -336,9 +336,9 @@ async function logToFirestore(logData) {
 }
 
 const port = process.env.PORT || 3000;  // Use 3000 as a default if PORT is not set
-app.listen(port, () => {
-  console.log(`Webhook is listening on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Webhook is listening on port ${port}`);
+// });
 
 app.all("/webhook", async (req, res) => {
 
@@ -1094,7 +1094,7 @@ const SLUG_MAP_CACHE = {
 };
 
 app.use(cors());
-const PORT = process.env.PORT || 3000;
+// const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // --- API Endpoints ---
