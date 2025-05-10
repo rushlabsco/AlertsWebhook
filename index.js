@@ -1346,8 +1346,8 @@ app.get('/trails/:identifier', async (req, res) => {
 });
 
 // --- Server Start ---
-app.listen(PORT, () => {
-    console.log(`✅ Notion API server running at http://localhost:${PORT}`);
+app.listen(port, () => {
+    console.log(`✅ Notion API server running at http://localhost:${port}`);
     console.log(`   Endpoints:`);
     console.log(`     GET /trails (List all trails - basic info)`);
     console.log(`     GET /trails/{id_or_slug} (Get full trail details)`);
