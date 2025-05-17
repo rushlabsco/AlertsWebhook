@@ -1272,6 +1272,7 @@ app.get('/trails/:identifier', async (req, res) => {
             hikeName: hikeNamePlainText,
             hikeNameRichText: hikeNameRichText,
             lastUpdated: getPropertyValue(rawProps['Last edited time']),
+            lastUpdatedManually:getPropertyValue(rawProps['Last Verified Date (Manual)'])?.start,
             state: getPropertyValue(rawProps['State']), // Assuming this returns string or null
             alternateName: getPlainTextFromRichTextArray(getPropertyValue(rawProps['Alternate Name(s)'])), // Process as rich text
             alternateNameRichText: getPropertyValue(rawProps['Alternate Name(s)']), // Keep rich text
