@@ -257,13 +257,13 @@ app.post("/Payment", async (req, res) => {
           // If productId is 003, handle sheets and email flow
           if (productId === '003') {
             try {
-              // Prepare payment data for Google Sheet
               const paymentData = {
                 paymentId,
                 userEmail: email,
-                amount: amount / 100, // Convert from paise to rupees
+                contact: req.body.payload.payment.entity.contact, // Get contact from payment entity
+                amount: amount / 100,
                 timestamp: new Date().toISOString(),
-                productName: 'Growth Blueprint for Hikers' // Hardcoded since this is specific to productId 003
+                productName: 'Outdoor Webinar'
               };
 
               // Append to Google Sheet
@@ -279,7 +279,6 @@ app.post("/Payment", async (req, res) => {
               }
             } catch (error) {
               console.error('Error in payment confirmation flow:', error);
-              // Don't throw error to avoid affecting payment capture
             }
           }
 
@@ -1402,6 +1401,7 @@ async function appendToGoogleSheet(paymentData) {
             [
                 paymentData.paymentId,
                 paymentData.userEmail || 'N/A',
+                paymentData.contact || 'N/A',  // Added contact/mobile number
                 paymentData.amount,
                 paymentData.timestamp,
                 paymentData.productName
