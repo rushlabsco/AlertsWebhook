@@ -1477,6 +1477,7 @@ async function sendPaymentConfirmationEmail(userEmail, details) {
                 <a href="${process.env.WHATSAPP_COMMUNITY_LINK}" class="whatsapp-btn">
                     Join WhatsApp Community
                 </a>
+                <p><small>In case the button above is not visible, go to this URL: ${process.env.WHATSAPP_COMMUNITY_LINK}</small></p>
                 <p><small>The group is ONLY used for announcements and your number will stay private. No chat or spam.</small></p>
             </div>
 
