@@ -29,6 +29,9 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
+// --- Google Sheets & Payment Confirmation Logic ---
+const { google } = require('googleapis');
+
 const db = admin.firestore();
 const app = express();
 app.use(cors()); 
@@ -1343,6 +1346,172 @@ app.get('/trails/:identifier', async (req, res) => {
             message = 'Notion API rate limit exceeded. Please try again later.';
         }
         res.status(statusCode).json({ error: message, details: err.code ? err.code : null });
+    }
+});
+
+
+
+/**
+ * Appends payment data to a Google Sheet.
+ * Assumes the Google Sheet and headers already exist.
+ * @param {object} paymentData - The payment data to log.
+ */
+async function appendToGoogleSheet(paymentData) {
+    try {
+        const auth = new google.auth.GoogleAuth({
+            credentials: {
+                client_email: process.env.FIREBASE_CLIENT_EMAIL,
+                private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            },
+            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+
+        const sheets = google.sheets({ version: 'v4', auth });
+        const spreadsheetId = process.env.PAYMENT_SPREADSHEET_ID;
+        const range = 'Sheet1'; // Or your specific sheet name
+
+        const values = [
+            [
+                paymentData.paymentId,
+                paymentData.userName,
+                paymentData.userEmail,
+                paymentData.amount,
+                paymentData.timestamp,
+                paymentData.productName
+            ],
+        ];
+
+        await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values,
+            },
+        });
+        console.log('Payment data successfully appended to Google Sheet.');
+    } catch (error) {
+        console.error('Error writing to Google Sheet:', error.message || error);
+        throw new Error('Failed to save data to Google Sheet.');
+    }
+}
+
+/**
+ * Sends a payment confirmation email.
+ * @param {string} userEmail - The recipient's email address.
+ * @param {object} details - Details for the email template.
+ */
+async function sendPaymentConfirmationEmail(userEmail, details) {
+    const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; }
+            .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; }
+            .header { font-size: 24px; color: #333; }
+            .details { margin: 20px 0; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="header">Your Spot is Confirmed!</h1>
+            <p>Hi ${details.userName},</p>
+            <p>Thank you for your payment. Your purchase is confirmed and we're excited to have you.</p>
+            <div class="details">
+                <p><strong>Product:</strong> ${details.productName}</p>
+                <p><strong>Amount Paid:</strong> ₹${details.amount}</p>
+                <p><strong>Payment ID:</strong> ${details.paymentId}</p>
+            </div>
+            <p>If you have any questions, feel free to contact us at hi@manav.in.</p>
+            <br/>
+            <p>Thanks,</p>
+            <p>Team Manav</p>
+        </div>
+    </body>
+    </html>`;
+
+    const mailOptions = {
+        from: `"Manav" <${process.env.EMAIL_USER}>`,
+        to: userEmail,
+        subject: 'Payment Confirmation - Your Spot is Confirmed!',
+        html: emailHtml,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Payment confirmation email sent to ${userEmail}`);
+    } catch (error) {
+        console.error('Error sending confirmation email:', error);
+        throw new Error('Failed to send confirmation email.');
+    }
+}
+
+app.post("/api/post-payment", async (req, res) => {
+    // 1. Request Validation
+    const { paymentId, userEmail, userName, amount, productDetails } = req.body;
+    if (!paymentId || !userEmail || !userName || !amount || !productDetails?.name) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields: paymentId, userEmail, userName, amount, productDetails.name"
+        });
+    }
+
+    try {
+        // 2. Data Processing
+        const paymentData = {
+            paymentId,
+            userName,
+            userEmail,
+            amount,
+            productName: productDetails.name,
+            timestamp: new Date().toISOString(),
+        };
+
+        let sheetError = null;
+        let emailError = null;
+
+        // 3. CSV (Google Sheet) Storage
+        try {
+            await appendToGoogleSheet(paymentData);
+        } catch (error) {
+            sheetError = error.message;
+            console.error("Operation failed: appendToGoogleSheet");
+        }
+
+        // 4. Email Confirmation
+        try {
+            await sendPaymentConfirmationEmail(userEmail, paymentData);
+        } catch (error) {
+            emailError = error.message;
+            console.error("Operation failed: sendPaymentConfirmationEmail");
+        }
+        
+        // 5. Response Handling
+        if (sheetError || emailError) {
+            // If any operation failed, return a success response but include failure notices
+            return res.status(200).json({
+                success: true,
+                message: "Request processed, but some operations failed.",
+                errors: {
+                    sheet: sheetError,
+                    email: emailError,
+                }
+            });
+        }
+        
+        return res.status(200).json({
+            success: true,
+            message: "Payment processed and confirmation sent successfully."
+        });
+
+    } catch (error) {
+        // 6. Generic Error Handling
+        console.error("Error in /api/post-payment endpoint:", error);
+        return res.status(500).json({
+            success: false,
+            message: "An internal server error occurred.",
+        });
     }
 });
 
