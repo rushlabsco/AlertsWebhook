@@ -1432,26 +1432,65 @@ async function sendPaymentConfirmationEmail(userEmail, details) {
     <html>
     <head>
         <style>
-            body { font-family: Arial, sans-serif; }
-            .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; }
-            .header { font-size: 24px; color: #333; }
-            .details { margin: 20px 0; }
+            body { 
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+            }
+            .container { 
+                max-width: 600px; 
+                margin: auto; 
+                padding: 20px;
+            }
+            .important {
+                background: #fff9e6;
+                padding: 15px;
+                border-left: 4px solid #ffd700;
+                margin: 20px 0;
+            }
+            .details {
+                background: #f5f5f5;
+                padding: 15px;
+                margin: 20px 0;
+                border-radius: 4px;
+            }
+            .whatsapp-btn {
+                display: inline-block;
+                background: #25D366;
+                color: white;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 5px;
+                margin: 10px 0;
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1 class="header">Your Spot is Confirmed!</h1>
-            <p>Hi,${details.userEmail} </p>
-            <p>Thank you for your payment. Your purchase is confirmed and we're excited to have you.</p>
-            <div class="details">
-                <p><strong>Product:</strong> ${details.productName}</p>
-                <p><strong>Amount Paid:</strong> ₹${details.amount}</p>
-                <p><strong>Payment ID:</strong> ${details.paymentId}</p>
+            <p>Hi, Manav here.</p>
+            
+            <p>Thank you for registering for ${details.productName}.</p>
+
+            <div class="important">
+                <strong>Super Important:</strong> Make sure to join the WhatsApp Community using the link below.
+                <p>I will be sending reminders + joining link there.</p>
+                <a href="${process.env.WHATSAPP_COMMUNITY_LINK}" class="whatsapp-btn">
+                    Join WhatsApp Community
+                </a>
+                <p><small>The group is ONLY used for announcements and your number will stay private. No chat or spam.</small></p>
             </div>
-            <p>If you have any questions, feel free to contact us at hi@manav.in.</p>
-            <br/>
-            <p>Thanks,</p>
-            <p>Team Manav</p>
+
+            <div class="details">
+                <p><strong>Here are your payment details for reference:</strong></p>
+                <p>Amount Paid: ₹${details.amount}</p>
+                <p>Payment ID: ${details.paymentId}</p>
+            </div>
+
+            <p>For support, please contact me at hi@manav.in</p>
+
+            <p>See you soon!</p>
+            
+            <p>Manav</p>
         </div>
     </body>
     </html>`;
@@ -1459,7 +1498,7 @@ async function sendPaymentConfirmationEmail(userEmail, details) {
     const mailOptions = {
         from: `"Manav" <${process.env.EMAIL_USER}>`,
         to: userEmail,
-        subject: 'Payment Confirmation - Your Spot is Confirmed!',
+        subject: '🎉 Registration Successful',
         html: emailHtml,
     };
 
