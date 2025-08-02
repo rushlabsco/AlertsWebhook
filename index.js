@@ -247,17 +247,46 @@ app.post("/Payment", async (req, res) => {
           const paymentId = req.body.payload.payment.entity.id;
           const amount = req.body.payload.payment.entity.amount;
           const currency = req.body.payload.payment.entity.currency;
-          
+          const email = req.body.payload.payment.entity.email;
+          const productId = req.body.payload.payment.entity.notes?.productId;
 
           // Capture the payment
           const captureResponse = await captureRazorpayPayment(paymentId, amount, currency);
-          
           console.log('Payment captured:', captureResponse);
+
+          // If productId is 003, handle sheets and email flow
+          if (productId === '003') {
+            try {
+              // Prepare payment data for Google Sheet
+              const paymentData = {
+                paymentId,
+                userEmail: email,
+                amount: amount / 100, // Convert from paise to rupees
+                timestamp: new Date().toISOString(),
+                productName: 'Growth Blueprint for Hikers' // Hardcoded since this is specific to productId 003
+              };
+
+              // Append to Google Sheet
+              await appendToGoogleSheet(paymentData);
+
+              // Send confirmation email
+              if (email) {
+                await sendPaymentConfirmationEmail(email, {
+                  amount: amount / 100,
+                  paymentId: paymentId,
+                  productName: 'Growth Blueprint for Hikers'
+                });
+              }
+            } catch (error) {
+              console.error('Error in payment confirmation flow:', error);
+              // Don't throw error to avoid affecting payment capture
+            }
+          }
 
           break;
         } catch (captureError) {
           console.error('Payment capture failed:', captureError);
-          // Optionally log the failure or handle it as needed
+          // Handle capture error
         }
 
       case 'payment.captured':
@@ -1350,7 +1379,6 @@ app.get('/trails/:identifier', async (req, res) => {
 });
 
 
-
 /**
  * Appends payment data to a Google Sheet.
  * Assumes the Google Sheet and headers already exist.
@@ -1368,13 +1396,12 @@ async function appendToGoogleSheet(paymentData) {
 
         const sheets = google.sheets({ version: 'v4', auth });
         const spreadsheetId = process.env.PAYMENT_SPREADSHEET_ID;
-        const range = 'Sheet1'; // Or your specific sheet name
+        const range = 'Sheet1';
 
         const values = [
             [
                 paymentData.paymentId,
-                paymentData.userName,
-                paymentData.userEmail,
+                paymentData.userEmail || 'N/A',
                 paymentData.amount,
                 paymentData.timestamp,
                 paymentData.productName
@@ -1385,9 +1412,7 @@ async function appendToGoogleSheet(paymentData) {
             spreadsheetId,
             range,
             valueInputOption: 'USER_ENTERED',
-            resource: {
-                values,
-            },
+            resource: { values },
         });
         console.log('Payment data successfully appended to Google Sheet.');
     } catch (error) {
@@ -1416,7 +1441,7 @@ async function sendPaymentConfirmationEmail(userEmail, details) {
     <body>
         <div class="container">
             <h1 class="header">Your Spot is Confirmed!</h1>
-            <p>Hi ${details.userName},</p>
+            <p>Hi,${details.userEmail} </p>
             <p>Thank you for your payment. Your purchase is confirmed and we're excited to have you.</p>
             <div class="details">
                 <p><strong>Product:</strong> ${details.productName}</p>
@@ -1446,74 +1471,6 @@ async function sendPaymentConfirmationEmail(userEmail, details) {
         throw new Error('Failed to send confirmation email.');
     }
 }
-
-app.post("/api/post-payment", async (req, res) => {
-    // 1. Request Validation
-    const { paymentId, userEmail, userName, amount, productDetails } = req.body;
-    if (!paymentId || !userEmail || !userName || !amount || !productDetails?.name) {
-        return res.status(400).json({
-            success: false,
-            message: "Missing required fields: paymentId, userEmail, userName, amount, productDetails.name"
-        });
-    }
-
-    try {
-        // 2. Data Processing
-        const paymentData = {
-            paymentId,
-            userName,
-            userEmail,
-            amount,
-            productName: productDetails.name,
-            timestamp: new Date().toISOString(),
-        };
-
-        let sheetError = null;
-        let emailError = null;
-
-        // 3. CSV (Google Sheet) Storage
-        try {
-            await appendToGoogleSheet(paymentData);
-        } catch (error) {
-            sheetError = error.message;
-            console.error("Operation failed: appendToGoogleSheet");
-        }
-
-        // 4. Email Confirmation
-        try {
-            await sendPaymentConfirmationEmail(userEmail, paymentData);
-        } catch (error) {
-            emailError = error.message;
-            console.error("Operation failed: sendPaymentConfirmationEmail");
-        }
-        
-        // 5. Response Handling
-        if (sheetError || emailError) {
-            // If any operation failed, return a success response but include failure notices
-            return res.status(200).json({
-                success: true,
-                message: "Request processed, but some operations failed.",
-                errors: {
-                    sheet: sheetError,
-                    email: emailError,
-                }
-            });
-        }
-        
-        return res.status(200).json({
-            success: true,
-            message: "Payment processed and confirmation sent successfully."
-        });
-
-    } catch (error) {
-        // 6. Generic Error Handling
-        console.error("Error in /api/post-payment endpoint:", error);
-        return res.status(500).json({
-            success: false,
-            message: "An internal server error occurred.",
-        });
-    }
-});
 
 // --- Server Start ---
 app.listen(port, () => {
