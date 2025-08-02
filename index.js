@@ -249,6 +249,7 @@ app.post("/Payment", async (req, res) => {
           const currency = req.body.payload.payment.entity.currency;
           const email = req.body.payload.payment.entity.email;
           const productId = req.body.payload.payment.entity.notes?.productId;
+          const productName = req.body.payload.payment.entity.notes?.productName || 'Outdoor Webinar';
 
           // Capture the payment
           const captureResponse = await captureRazorpayPayment(paymentId, amount, currency);
@@ -263,7 +264,7 @@ app.post("/Payment", async (req, res) => {
                 contact: req.body.payload.payment.entity.contact, // Get contact from payment entity
                 amount: amount / 100,
                 timestamp: new Date().toISOString(),
-                productName: 'Outdoor Webinar'
+                productName: productName
               };
 
               // Append to Google Sheet
@@ -274,7 +275,7 @@ app.post("/Payment", async (req, res) => {
                 await sendPaymentConfirmationEmail(email, {
                   amount: amount / 100,
                   paymentId: paymentId,
-                  productName: 'Growth Blueprint for Hikers'
+                  productName: productName
                 });
               }
             } catch (error) {
